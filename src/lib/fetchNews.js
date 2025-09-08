@@ -39,22 +39,17 @@ const FEEDS = {
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 const ACCEPT =
-  "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7";
+  "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8,*/*;q=0.7";
 
 function normalizeUrl(raw) {
   try {
     const u = new URL(raw);
     u.hash = "";
-    const keep = new Set(["id", "p", "art", "article", "ref"]);
-    [...u.searchParams.keys()].forEach((k) => {
-      if (!keep.has(k.toLowerCase())) u.searchParams.delete(k);
-    });
     return `${u.protocol}//${u.hostname}${u.pathname.replace(/\/+$/, "")}${u.search}`.toLowerCase();
   } catch {
     return raw;
   }
 }
-
 function hostnameOf(link) {
   try {
     return new URL(link).hostname.replace(/^www\./, "");
@@ -63,133 +58,71 @@ function hostnameOf(link) {
   }
 }
 
-function absolutize(src, base) {
-  try {
-    return new URL(src, base).toString();
-  } catch {
-    return src;
-  }
+function parseRss(doc) {
+  return [...doc.querySelectorAll("item")].map((it) => ({
+    title: it.querySelector("title")?.textContent?.trim() || "(senza titolo)",
+    link: it.querySelector("link")?.textContent?.trim() || "",
+    date: new Date(it.querySelector("pubDate")?.textContent || Date.now()),
+    image: it.querySelector("enclosure")?.getAttribute("url") || null,
+  }));
 }
-
-/* ------------ PARSING ------------ */
-
-function parseRssDocument(document) {
-  const items = [...document.querySelectorAll("item")];
-  return items.map((item) => {
-    const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
-    const link = item.querySelector("link")?.textContent?.trim() || "";
-    const pubDate = item.querySelector("pubDate")?.textContent?.trim();
-    let date = new Date();
-    if (pubDate) {
-      const d = new Date(pubDate);
-      if (!isNaN(d)) date = d;
-    }
-    let image =
-      item.querySelector("enclosure")?.getAttribute("url") ||
-      item.querySelector("media\\:thumbnail")?.getAttribute("url") ||
-      null;
-
-    // prova dentro content
-    if (!image) {
-      const html = item.querySelector("content\\:encoded")?.textContent || "";
-      const m = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
-      if (m) image = m;
-    }
-    return { title, link, date, image };
-  });
-}
-
-function parseAtomDocument(document) {
-  const entries = [...document.querySelectorAll("entry")];
-  return entries.map((entry) => {
-    const title = entry.querySelector("title")?.textContent?.trim() || "(senza titolo)";
-    const linkEl =
-      entry.querySelector('link[rel="alternate"][href]') ||
-      entry.querySelector('link[href]');
-    const link = linkEl?.getAttribute("href") || "";
-    const updated = entry.querySelector("updated")?.textContent?.trim();
-    const published = entry.querySelector("published")?.textContent?.trim();
-    let date = new Date();
-    const cand = updated || published;
-    if (cand) {
-      const d = new Date(cand);
-      if (!isNaN(d)) date = d;
-    }
-    let image =
-      entry.querySelector("link[rel='enclosure'][href]")?.getAttribute("href") ||
-      entry.querySelector("media\\:thumbnail")?.getAttribute("url") ||
-      null;
-
-    if (!image) {
-      const html = entry.querySelector("content")?.textContent || entry.querySelector("summary")?.textContent || "";
-      const m = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
-      if (m) image = m;
-    }
-    return { title, link, date, image };
-  });
+function parseAtom(doc) {
+  return [...doc.querySelectorAll("entry")].map((it) => ({
+    title: it.querySelector("title")?.textContent?.trim() || "(senza titolo)",
+    link: it.querySelector("link")?.getAttribute("href") || "",
+    date: new Date(it.querySelector("updated")?.textContent || Date.now()),
+    image: it.querySelector("link[rel='enclosure']")?.getAttribute("href") || null,
+  }));
 }
 
 async function safeFetchRSS(url) {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: ACCEPT, "Accept-Language": "it-IT,it;q=0.9,en;q=0.8" },
+      headers: { "User-Agent": UA, Accept: ACCEPT },
       next: { revalidate: 300 },
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const status = res.status;
+    if (!res.ok) return { items: [], status };
     const text = await res.text();
-
     const { document } = new DOMParser().parseFromString(text, "text/xml");
-    if (!document) return [];
 
-    // prova RSS; se vuoto prova ATOM
-    let list = parseRssDocument(document);
-    if (!list.length) list = parseAtomDocument(document);
-    return list;
+    let items = parseRss(document);
+    if (!items.length) items = parseAtom(document);
+    return { items, status };
   } catch (e) {
-    console.error("Errore fetch RSS:", url, e.message || e);
-    return [];
+    return { items: [], status: "ERR: " + (e.message || e) };
   }
 }
-
-/* ------------ MAIN ------------ */
 
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
 
   const results = [];
+  const diagnostics = [];
   const seen = new Set();
 
   for (const [cat, urls] of Object.entries(sources)) {
     for (const url of urls) {
-      const items = await safeFetchRSS(url);
+      const { items, status } = await safeFetchRSS(url);
+      diagnostics.push({ url, status, count: items.length });
       for (const item of items) {
-        const originalLink = item.link;
-        if (!originalLink) continue;
-
-        const norm = normalizeUrl(originalLink);
-        if (seen.has(norm)) continue;
+        const norm = normalizeUrl(item.link);
+        if (!norm || seen.has(norm)) continue;
         seen.add(norm);
 
         results.push({
           id: norm,
           title: item.title,
-          link: addReferral(originalLink),
-          original: originalLink,
-          date: item.date || new Date(),
+          link: item.link,
+          date: item.date,
           category: cat,
-          image:
-            item.image ||
-            `https://www.google.com/s2/favicons?domain=${hostnameOf(originalLink)}&sz=128`,
-          source: hostnameOf(originalLink),
+          image: item.image || `https://www.google.com/s2/favicons?domain=${hostnameOf(item.link)}&sz=128`,
+          source: hostnameOf(item.link),
         });
       }
     }
   }
 
   results.sort((a, b) => b.date - a.date);
-  return results;
-}
-
-function addReferral(link) {
-  return link.includes("?") ? `${link}&ref=vrabo` : `${link}?ref=vrabo`;
+  return { articles: results, diagnostics };
 }
