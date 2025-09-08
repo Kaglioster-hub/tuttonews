@@ -1,6 +1,5 @@
 import { DOMParser } from "linkedom";
 
-// --- FEEDS ---
 const FEEDS = {
   cronaca: [
     "https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml",
@@ -37,7 +36,11 @@ const FEEDS = {
   ],
 };
 
-// --- Utils ---
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+const ACCEPT =
+  "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7";
+
 function normalizeUrl(raw) {
   try {
     const u = new URL(raw);
@@ -68,37 +71,88 @@ function absolutize(src, base) {
   }
 }
 
-// --- Parse XML con linkedom ---
+/* ------------ PARSING ------------ */
+
+function parseRssDocument(document) {
+  const items = [...document.querySelectorAll("item")];
+  return items.map((item) => {
+    const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
+    const link = item.querySelector("link")?.textContent?.trim() || "";
+    const pubDate = item.querySelector("pubDate")?.textContent?.trim();
+    let date = new Date();
+    if (pubDate) {
+      const d = new Date(pubDate);
+      if (!isNaN(d)) date = d;
+    }
+    let image =
+      item.querySelector("enclosure")?.getAttribute("url") ||
+      item.querySelector("media\\:thumbnail")?.getAttribute("url") ||
+      null;
+
+    // prova dentro content
+    if (!image) {
+      const html = item.querySelector("content\\:encoded")?.textContent || "";
+      const m = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+      if (m) image = m;
+    }
+    return { title, link, date, image };
+  });
+}
+
+function parseAtomDocument(document) {
+  const entries = [...document.querySelectorAll("entry")];
+  return entries.map((entry) => {
+    const title = entry.querySelector("title")?.textContent?.trim() || "(senza titolo)";
+    const linkEl =
+      entry.querySelector('link[rel="alternate"][href]') ||
+      entry.querySelector('link[href]');
+    const link = linkEl?.getAttribute("href") || "";
+    const updated = entry.querySelector("updated")?.textContent?.trim();
+    const published = entry.querySelector("published")?.textContent?.trim();
+    let date = new Date();
+    const cand = updated || published;
+    if (cand) {
+      const d = new Date(cand);
+      if (!isNaN(d)) date = d;
+    }
+    let image =
+      entry.querySelector("link[rel='enclosure'][href]")?.getAttribute("href") ||
+      entry.querySelector("media\\:thumbnail")?.getAttribute("url") ||
+      null;
+
+    if (!image) {
+      const html = entry.querySelector("content")?.textContent || entry.querySelector("summary")?.textContent || "";
+      const m = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+      if (m) image = m;
+    }
+    return { title, link, date, image };
+  });
+}
+
 async function safeFetchRSS(url) {
   try {
-    const res = await fetch(url, { next: { revalidate: 300 } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: ACCEPT, "Accept-Language": "it-IT,it;q=0.9,en;q=0.8" },
+      next: { revalidate: 300 },
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
 
     const { document } = new DOMParser().parseFromString(text, "text/xml");
-    const items = [...document.querySelectorAll("item")];
+    if (!document) return [];
 
-    return items.map((item) => {
-      const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
-      const link = item.querySelector("link")?.textContent?.trim() || "";
-      const pubDate = item.querySelector("pubDate")?.textContent?.trim();
-      const isoDate = pubDate ? new Date(pubDate) : new Date();
-
-      let image = item.querySelector("enclosure")?.getAttribute("url") || null;
-      if (!image) {
-        const mThumb = item.querySelector("media\\:thumbnail")?.getAttribute("url");
-        if (mThumb) image = mThumb;
-      }
-
-      return { title, link, date: isoDate, image };
-    });
+    // prova RSS; se vuoto prova ATOM
+    let list = parseRssDocument(document);
+    if (!list.length) list = parseAtomDocument(document);
+    return list;
   } catch (e) {
     console.error("Errore fetch RSS:", url, e.message || e);
     return [];
   }
 }
 
-// --- MAIN ---
+/* ------------ MAIN ------------ */
+
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
 
@@ -121,7 +175,7 @@ export async function fetchNews(category = null) {
           title: item.title,
           link: addReferral(originalLink),
           original: originalLink,
-          date: item.date,
+          date: item.date || new Date(),
           category: cat,
           image:
             item.image ||
