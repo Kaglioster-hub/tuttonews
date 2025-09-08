@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
@@ -9,16 +9,13 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      { source: "/tutte", destination: "/?cat=tutte", permanent: false },
-      { source: "/cronaca", destination: "/?cat=cronaca", permanent: false },
-      { source: "/politica", destination: "/?cat=politica", permanent: false },
-      { source: "/economia", destination: "/?cat=economia", permanent: false },
-      { source: "/sport", destination: "/?cat=sport", permanent: false },
-      { source: "/esteri", destination: "/?cat=esteri", permanent: false },
-      { source: "/cultura", destination: "/?cat=cultura", permanent: false },
-      { source: "/tecnologia", destination: "/?cat=tecnologia", permanent: false },
+      { source: "/cronaca", destination: "/?cat=cronaca", permanent: true },
+      { source: "/politica", destination: "/?cat=politica", permanent: true },
+      { source: "/economia", destination: "/?cat=economia", permanent: true },
+      { source: "/sport", destination: "/?cat=sport", permanent: true },
+      { source: "/esteri", destination: "/?cat=esteri", permanent: true },
+      { source: "/cultura", destination: "/?cat=cultura", permanent: true },
+      { source: "/tecnologia", destination: "/?cat=tecnologia", permanent: true },
     ];
   },
 };
-
-module.exports = nextConfig;
