@@ -5,14 +5,13 @@ export const dynamic = "force-dynamic";
 import { fetchNews } from "@/lib/fetchNews";
 
 export default async function DebugPage(props) {
-  // Next 15: searchParams può essere una Promise
   const sp =
     props?.searchParams && typeof props.searchParams.then === "function"
       ? await props.searchParams
       : props?.searchParams || {};
 
-  const cat = sp?.cat || "tutte"; // es. ?cat=cronaca
-  const n = Math.max(1, Math.min(100, parseInt(sp?.n, 10) || 20)); // es. ?n=30
+  const cat = sp?.cat || "tutte";       // es: ?cat=cronaca
+  const n = Math.max(1, Math.min(100, parseInt(sp?.n, 10) || 20)); // es: ?n=30
 
   let articles = [];
   let error = null;
@@ -27,9 +26,7 @@ export default async function DebugPage(props) {
       <h1 className="text-2xl font-bold mb-4">/debug – fetchNews()</h1>
 
       <div className="mb-4 text-sm">
-        <p>
-          Parametri: <code>?cat=cronaca|politica|…</code> · <code>?n=20</code>
-        </p>
+        <p>Parametri: <code>?cat=cronaca|politica|…</code> · <code>?n=20</code></p>
         <p className="mt-1">
           API grezza:{" "}
           <a
