@@ -18,15 +18,24 @@ const CATEGORIES = [
 ];
 
 export default async function Home(props) {
-  // ✅ compatibilità Next 15: attende searchParams se è una Promise
-  const sp = (props?.searchParams && typeof props.searchParams.then === "function")
-    ? await props.searchParams
-    : (props?.searchParams || {});
+  // ✅ compatibile Next 15
+  let sp = {};
+  try {
+    if (props?.searchParams && typeof props.searchParams.then === "function") {
+      sp = await props.searchParams;
+    } else {
+      sp = props?.searchParams || {};
+    }
+  } catch {
+    sp = {};
+  }
 
-  const sort = sp?.sort || "recenti";
-  const category = sp?.cat || null;
+  const sort = sp.sort || "recenti";
+  const category = sp.cat || null;
 
   let articles = [];
+  let errorFetch = false;
+
   try {
     articles = await fetchNews(category && category !== "tutte" ? category : null);
     if (sort === "vecchi") {
@@ -34,6 +43,7 @@ export default async function Home(props) {
     }
   } catch (e) {
     console.error("Errore fetchNews()", e);
+    errorFetch = true;
   }
 
   return (
@@ -83,9 +93,15 @@ export default async function Home(props) {
           <ArticleCard key={a.id} article={a} />
         ))}
 
-        {articles.length === 0 && (
+        {articles.length === 0 && !errorFetch && (
           <div className="col-span-full text-center text-sm opacity-70 py-10">
             Nessuna notizia al momento. Riprova tra poco.
+          </div>
+        )}
+
+        {errorFetch && (
+          <div className="col-span-full text-center text-red-500 py-10">
+            Errore nel recupero delle notizie. Riprova più tardi.
           </div>
         )}
       </div>
