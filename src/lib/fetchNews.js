@@ -1,6 +1,6 @@
-// Edge-ready RSS fetcher
-// Non usa più rss-parser: più leggero e compatibile con runtime "edge"
+import { DOMParser } from "linkedom";
 
+// --- FEEDS ---
 const FEEDS = {
   cronaca: [
     "https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml",
@@ -68,16 +68,15 @@ function absolutize(src, base) {
   }
 }
 
-// --- Parse XML "a mano" ---
+// --- Parse XML con linkedom ---
 async function safeFetchRSS(url) {
   try {
     const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
 
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "application/xml");
-    const items = [...xml.querySelectorAll("item")];
+    const { document } = new DOMParser().parseFromString(text, "text/xml");
+    const items = [...document.querySelectorAll("item")];
 
     return items.map((item) => {
       const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
@@ -85,7 +84,6 @@ async function safeFetchRSS(url) {
       const pubDate = item.querySelector("pubDate")?.textContent?.trim();
       const isoDate = pubDate ? new Date(pubDate) : new Date();
 
-      // Enclosure o media
       let image = item.querySelector("enclosure")?.getAttribute("url") || null;
       if (!image) {
         const mThumb = item.querySelector("media\\:thumbnail")?.getAttribute("url");
