@@ -17,15 +17,14 @@ const CATEGORIES = [
   { key: "tecnologia", label: "Tecnologia" },
 ];
 
-export default async function Home(props) {
-  // ✅ compatibile Next 15
+export default async function Home({ searchParams }) {
+  // ✅ Compatibilità Next 15 → await se è Promise
   let sp = {};
   try {
-    if (props?.searchParams && typeof props.searchParams.then === "function") {
-      sp = await props.searchParams;
-    } else {
-      sp = props?.searchParams || {};
-    }
+    sp =
+      searchParams && typeof searchParams.then === "function"
+        ? await searchParams
+        : searchParams || {};
   } catch {
     sp = {};
   }
@@ -33,11 +32,13 @@ export default async function Home(props) {
   const sort = sp.sort || "recenti";
   const category = sp.cat || null;
 
+  // ✅ Fetch notizie
   let articles = [];
   let errorFetch = false;
-
   try {
-    articles = await fetchNews(category && category !== "tutte" ? category : null);
+    articles = await fetchNews(
+      category && category !== "tutte" ? category : null
+    );
     if (sort === "vecchi") {
       articles = [...articles].reverse();
     }
@@ -54,13 +55,14 @@ export default async function Home(props) {
           TuttoNews24
         </h1>
         <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-          Le ultime notizie dalle principali testate italiane, sempre aggiornate,
-          senza dispersioni. <br />
+          Le ultime notizie dalle principali testate italiane, sempre aggiornate
+          e senza duplicati.
+          <br />
           Clicca sugli articoli per leggerli direttamente sui siti originali.
         </p>
       </header>
 
-      {/* Filtri */}
+      {/* Filtri categorie */}
       <div className="flex flex-wrap justify-center gap-3">
         {CATEGORIES.map((c) => (
           <a
@@ -76,7 +78,7 @@ export default async function Home(props) {
           </a>
         ))}
 
-        {/* Ordinamento */}
+        {/* Toggle ordinamento */}
         <a
           href={`/?cat=${category || "tutte"}&sort=${
             sort === "recenti" ? "vecchi" : "recenti"
@@ -93,25 +95,25 @@ export default async function Home(props) {
           <ArticleCard key={a.id} article={a} />
         ))}
 
-        {articles.length === 0 && !errorFetch && (
+        {!errorFetch && articles.length === 0 && (
           <div className="col-span-full text-center text-sm opacity-70 py-10">
-            Nessuna notizia al momento. Riprova tra poco.
+            Nessuna notizia disponibile al momento. Riprova tra poco.
           </div>
         )}
 
         {errorFetch && (
           <div className="col-span-full text-center text-red-500 py-10">
-            Errore nel recupero delle notizie. Riprova più tardi.
+            ⚠️ Errore nel recupero delle notizie. Riprova più tardi.
           </div>
         )}
       </div>
 
-      {/* Sezione Donazioni */}
+      {/* Donazioni */}
       <section className="text-center pt-10 border-t border-gray-300 dark:border-gray-700">
         <h2 className="text-2xl font-bold mb-4">Sostieni TuttoNews24</h2>
         <p className="text-gray-600 dark:text-gray-300 max-w-lg mx-auto mb-6">
-          Offriamo un servizio gratuito, ma puoi supportarci con una donazione
-          volontaria. L’importo consigliato è <strong>18,00 €</strong>.
+          Il servizio resta gratuito, ma puoi supportarci con una donazione
+          volontaria. Importo consigliato: <strong>18,00 €</strong>.
         </p>
         <DonateButton />
       </section>
