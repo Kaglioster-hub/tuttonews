@@ -1,4 +1,3 @@
-// src/lib/fetchNews.js
 import Parser from "rss-parser";
 
 const parser = new Parser({
@@ -48,12 +47,11 @@ const FEEDS = {
   ]
 };
 
-// normalizza URL per dedup: togli query di tracking, #, trailing slash
+// Normalizza URL per dedup
 function normalizeUrl(raw) {
   try {
     const u = new URL(raw);
     u.hash = "";
-    // conserva solo query "significative", rimuove tracking
     const keep = new Set(["id", "p", "art", "article", "ref"]);
     [...u.searchParams.keys()].forEach(k => {
       if (!keep.has(k.toLowerCase())) u.searchParams.delete(k);
@@ -69,7 +67,7 @@ function hostnameOf(link) {
   try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
 
-// timeout fetch
+// Fetch con timeout
 async function fetchWithTimeout(url, ms = 10000) {
   const ctl = new AbortController();
   const id = setTimeout(() => ctl.abort(), ms);
@@ -81,7 +79,7 @@ async function fetchWithTimeout(url, ms = 10000) {
   }
 }
 
-// prova a ricavare l'immagine OG/Twitter dalla pagina dell'articolo
+// Ricava immagine OG/Twitter
 async function fetchOgImage(pageUrl) {
   try {
     const res = await fetchWithTimeout(pageUrl, 8000);
@@ -97,15 +95,13 @@ async function fetchOgImage(pageUrl) {
   }
 }
 
-// rende assoluti eventuali src relativi
 function absolutize(src, base) {
   try { return new URL(src, base).toString(); } catch { return src; }
 }
 
-// estrae immagine da item RSS (enclosure/media/thumbnail/content)
+// Estrai immagine dall'item RSS
 function extractFromItem(item, link) {
   if (item.enclosure?.url) return absolutize(item.enclosure.url, link);
-
   if (item.media?.length) {
     const m = item.media.find(x => x?.$?.url);
     if (m?.$?.url) return absolutize(m.$.url, link);
@@ -117,32 +113,39 @@ function extractFromItem(item, link) {
   const html = item.contentEncoded || item.content;
   const match = html?.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
   if (match) return absolutize(match, link);
-
   return null;
+}
+
+// --- SAFE PARSE ---
+async function safeParseURL(url) {
+  try {
+    return await parser.parseURL(url);
+  } catch (e) {
+    console.error("Errore parsing feed:", url, e.message || e);
+    return { items: [] };
+  }
 }
 
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
 
   const results = [];
-  const seen = new Set(); // dedup per link normalizzato
+  const seen = new Set();
 
   for (const [cat, urls] of Object.entries(sources)) {
-    const parsedFeeds = await Promise.allSettled(urls.map(u => parser.parseURL(u)));
-    for (const pf of parsedFeeds) {
-      if (pf.status !== "fulfilled") continue;
-      for (const item of pf.value.items ?? []) {
+    const parsedFeeds = await Promise.all(urls.map(u => safeParseURL(u)));
+    for (const feed of parsedFeeds) {
+      for (const item of feed.items ?? []) {
         const originalLink = item.link || item.guid;
         if (!originalLink) continue;
 
         const norm = normalizeUrl(originalLink);
-        if (seen.has(norm)) continue; // già preso in altra categoria, non duplicare
+        if (seen.has(norm)) continue;
         seen.add(norm);
 
         const date = new Date(item.isoDate || item.pubDate || Date.now());
         const link = addReferral(originalLink);
 
-        // immagini: prima dall'item, poi OG della pagina
         let image = extractFromItem(item, originalLink);
         if (!image) image = await fetchOgImage(originalLink);
 
@@ -154,18 +157,16 @@ export async function fetchNews(category = null) {
           date,
           category: cat,
           image,
-          source: hostnameOf(originalLink)
+          source: hostnameOf(originalLink),
         });
       }
     }
   }
 
-  // ordina per data desc
   results.sort((a, b) => b.date - a.date);
   return results;
 }
 
 function addReferral(link) {
-  // qui puoi mettere logiche per dominio (es. awin/amazon) — per ora ref generico
   return link.includes("?") ? `${link}&ref=vrabo` : `${link}?ref=vrabo`;
 }
