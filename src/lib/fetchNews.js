@@ -1,17 +1,6 @@
-import Parser from "rss-parser";
+// Edge-ready RSS fetcher
+// Non usa più rss-parser: più leggero e compatibile con runtime "edge"
 
-const parser = new Parser({
-  timeout: 15000,
-  customFields: {
-    item: [
-      ["media:content", "media", { keepArray: true }],
-      ["media:thumbnail", "thumbnail", { keepArray: true }],
-      ["content:encoded", "contentEncoded"],
-    ],
-  },
-});
-
-// --- FEEDS ---
 const FEEDS = {
   cronaca: [
     "https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml",
@@ -57,8 +46,7 @@ function normalizeUrl(raw) {
     [...u.searchParams.keys()].forEach((k) => {
       if (!keep.has(k.toLowerCase())) u.searchParams.delete(k);
     });
-    const norm = `${u.protocol}//${u.hostname}${u.pathname.replace(/\/+$/, "")}${u.search}`;
-    return norm.toLowerCase();
+    return `${u.protocol}//${u.hostname}${u.pathname.replace(/\/+$/, "")}${u.search}`.toLowerCase();
   } catch {
     return raw;
   }
@@ -72,31 +60,6 @@ function hostnameOf(link) {
   }
 }
 
-async function fetchWithTimeout(url, ms = 10000) {
-  const ctl = new AbortController();
-  const id = setTimeout(() => ctl.abort(), ms);
-  try {
-    return await fetch(url, { signal: ctl.signal, redirect: "follow" });
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-async function fetchOgImage(pageUrl) {
-  try {
-    const res = await fetchWithTimeout(pageUrl, 8000);
-    if (!res.ok) return null;
-    const html = await res.text();
-    const og = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)?.[1];
-    if (og) return absolutize(og, pageUrl);
-    const tw = html.match(/<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i)?.[1];
-    if (tw) return absolutize(tw, pageUrl);
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function absolutize(src, base) {
   try {
     return new URL(src, base).toString();
@@ -105,33 +68,35 @@ function absolutize(src, base) {
   }
 }
 
-function extractFromItem(item, link) {
-  if (item.enclosure?.url) return absolutize(item.enclosure.url, link);
-  if (item.media?.length) {
-    const m = item.media.find((x) => x?.$?.url);
-    if (m?.$?.url) return absolutize(m.$.url, link);
-  }
-  if (item.thumbnail?.length) {
-    const t = item.thumbnail.find((x) => x?.$?.url);
-    if (t?.$?.url) return absolutize(t.$.url, link);
-  }
-  const html = item.contentEncoded || item.content;
-  const match = html?.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
-  if (match) return absolutize(match, link);
-  return null;
-}
-
-// --- SAFE PARSE con retry ---
-async function safeParseURL(url, retry = 1) {
+// --- Parse XML "a mano" ---
+async function safeFetchRSS(url) {
   try {
-    return await parser.parseURL(url);
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "application/xml");
+    const items = [...xml.querySelectorAll("item")];
+
+    return items.map((item) => {
+      const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
+      const link = item.querySelector("link")?.textContent?.trim() || "";
+      const pubDate = item.querySelector("pubDate")?.textContent?.trim();
+      const isoDate = pubDate ? new Date(pubDate) : new Date();
+
+      // Enclosure o media
+      let image = item.querySelector("enclosure")?.getAttribute("url") || null;
+      if (!image) {
+        const mThumb = item.querySelector("media\\:thumbnail")?.getAttribute("url");
+        if (mThumb) image = mThumb;
+      }
+
+      return { title, link, date: isoDate, image };
+    });
   } catch (e) {
-    console.error("Errore parsing feed:", url, e.message || e);
-    if (retry > 0) {
-      await new Promise((r) => setTimeout(r, 1000));
-      return safeParseURL(url, retry - 1);
-    }
-    return { items: [] };
+    console.error("Errore fetch RSS:", url, e.message || e);
+    return [];
   }
 }
 
@@ -141,40 +106,28 @@ export async function fetchNews(category = null) {
 
   const results = [];
   const seen = new Set();
-  let ogFetchCount = 0;
-  const maxOgFetch = 10; // limite per performance
 
   for (const [cat, urls] of Object.entries(sources)) {
-    const parsedFeeds = await Promise.all(urls.map((u) => safeParseURL(u)));
-    for (const feed of parsedFeeds) {
-      for (const item of feed.items ?? []) {
-        const originalLink = item.link || item.guid;
+    for (const url of urls) {
+      const items = await safeFetchRSS(url);
+      for (const item of items) {
+        const originalLink = item.link;
         if (!originalLink) continue;
 
         const norm = normalizeUrl(originalLink);
         if (seen.has(norm)) continue;
         seen.add(norm);
 
-        const date = new Date(item.isoDate || item.pubDate || Date.now());
-        const link = addReferral(originalLink);
-
-        let image = extractFromItem(item, originalLink);
-        if (!image && ogFetchCount < maxOgFetch) {
-          image = await fetchOgImage(originalLink);
-          ogFetchCount++;
-        }
-        if (!image) {
-          image = `https://www.google.com/s2/favicons?domain=${hostnameOf(originalLink)}&sz=128`;
-        }
-
         results.push({
           id: norm,
-          title: item.title?.trim() || "(senza titolo)",
-          link,
+          title: item.title,
+          link: addReferral(originalLink),
           original: originalLink,
-          date,
+          date: item.date,
           category: cat,
-          image,
+          image:
+            item.image ||
+            `https://www.google.com/s2/favicons?domain=${hostnameOf(originalLink)}&sz=128`,
           source: hostnameOf(originalLink),
         });
       }
