@@ -6,11 +6,12 @@ const parser = new Parser({
     item: [
       ["media:content", "media", { keepArray: true }],
       ["media:thumbnail", "thumbnail", { keepArray: true }],
-      ["content:encoded", "contentEncoded"]
-    ]
-  }
+      ["content:encoded", "contentEncoded"],
+    ],
+  },
 });
 
+// --- FEEDS ---
 const FEEDS = {
   cronaca: [
     "https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml",
@@ -44,16 +45,16 @@ const FEEDS = {
   tecnologia: [
     "https://www.ansa.it/sito/notizie/tecnologia/tecnologia_rss.xml",
     "https://www.corriere.it/rss/tecnologia.xml",
-  ]
+  ],
 };
 
-// Normalizza URL per dedup
+// --- Utils ---
 function normalizeUrl(raw) {
   try {
     const u = new URL(raw);
     u.hash = "";
     const keep = new Set(["id", "p", "art", "article", "ref"]);
-    [...u.searchParams.keys()].forEach(k => {
+    [...u.searchParams.keys()].forEach((k) => {
       if (!keep.has(k.toLowerCase())) u.searchParams.delete(k);
     });
     const norm = `${u.protocol}//${u.hostname}${u.pathname.replace(/\/+$/, "")}${u.search}`;
@@ -64,22 +65,23 @@ function normalizeUrl(raw) {
 }
 
 function hostnameOf(link) {
-  try { return new URL(link).hostname.replace(/^www\./, ""); } catch { return ""; }
+  try {
+    return new URL(link).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
-// Fetch con timeout
 async function fetchWithTimeout(url, ms = 10000) {
   const ctl = new AbortController();
   const id = setTimeout(() => ctl.abort(), ms);
   try {
-    const res = await fetch(url, { signal: ctl.signal, redirect: "follow" });
-    return res;
+    return await fetch(url, { signal: ctl.signal, redirect: "follow" });
   } finally {
     clearTimeout(id);
   }
 }
 
-// Ricava immagine OG/Twitter
 async function fetchOgImage(pageUrl) {
   try {
     const res = await fetchWithTimeout(pageUrl, 8000);
@@ -96,18 +98,21 @@ async function fetchOgImage(pageUrl) {
 }
 
 function absolutize(src, base) {
-  try { return new URL(src, base).toString(); } catch { return src; }
+  try {
+    return new URL(src, base).toString();
+  } catch {
+    return src;
+  }
 }
 
-// Estrai immagine dall'item RSS
 function extractFromItem(item, link) {
   if (item.enclosure?.url) return absolutize(item.enclosure.url, link);
   if (item.media?.length) {
-    const m = item.media.find(x => x?.$?.url);
+    const m = item.media.find((x) => x?.$?.url);
     if (m?.$?.url) return absolutize(m.$.url, link);
   }
   if (item.thumbnail?.length) {
-    const t = item.thumbnail.find(x => x?.$?.url);
+    const t = item.thumbnail.find((x) => x?.$?.url);
     if (t?.$?.url) return absolutize(t.$.url, link);
   }
   const html = item.contentEncoded || item.content;
@@ -116,24 +121,31 @@ function extractFromItem(item, link) {
   return null;
 }
 
-// --- SAFE PARSE ---
-async function safeParseURL(url) {
+// --- SAFE PARSE con retry ---
+async function safeParseURL(url, retry = 1) {
   try {
     return await parser.parseURL(url);
   } catch (e) {
     console.error("Errore parsing feed:", url, e.message || e);
+    if (retry > 0) {
+      await new Promise((r) => setTimeout(r, 1000));
+      return safeParseURL(url, retry - 1);
+    }
     return { items: [] };
   }
 }
 
+// --- MAIN ---
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
 
   const results = [];
   const seen = new Set();
+  let ogFetchCount = 0;
+  const maxOgFetch = 10; // limite per performance
 
   for (const [cat, urls] of Object.entries(sources)) {
-    const parsedFeeds = await Promise.all(urls.map(u => safeParseURL(u)));
+    const parsedFeeds = await Promise.all(urls.map((u) => safeParseURL(u)));
     for (const feed of parsedFeeds) {
       for (const item of feed.items ?? []) {
         const originalLink = item.link || item.guid;
@@ -147,7 +159,13 @@ export async function fetchNews(category = null) {
         const link = addReferral(originalLink);
 
         let image = extractFromItem(item, originalLink);
-        if (!image) image = await fetchOgImage(originalLink);
+        if (!image && ogFetchCount < maxOgFetch) {
+          image = await fetchOgImage(originalLink);
+          ogFetchCount++;
+        }
+        if (!image) {
+          image = `https://www.google.com/s2/favicons?domain=${hostnameOf(originalLink)}&sz=128`;
+        }
 
         results.push({
           id: norm,
