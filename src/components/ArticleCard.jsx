@@ -5,10 +5,23 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 
 export default function ArticleCard({ article }) {
+  if (!article) return null;
+
   const source = article.source || "news";
   const favicon = `https://www.google.com/s2/favicons?domain=${source}&sz=128`;
-
   const img = article.image || null;
+
+  // ✅ Gestione date mancante
+  let timeAgo = "data non disponibile";
+  try {
+    if (article.date) {
+      timeAgo = formatDistanceToNow(new Date(article.date), { locale: it }) + " fa";
+    }
+  } catch {
+    timeAgo = "data non disponibile";
+  }
+
+  const categoryLabel = article.category ? article.category.toUpperCase() : "ALTRO";
 
   return (
     <div className="relative rounded-2xl shadow-card bg-white dark:bg-gray-900 p-4 hover:shadow-glow transition">
@@ -22,12 +35,11 @@ export default function ArticleCard({ article }) {
         {img ? (
           <Image
             src={img}
-            alt={article.title}
+            alt={article.title || "Immagine notizia"}
             width={640}
             height={360}
             className="w-full h-full object-cover"
             unoptimized
-            // unoptimized: molte testate non mandano header adatti a next/image optimizer
           />
         ) : (
           <div className="text-gray-500 text-sm">Nessuna immagine</div>
@@ -35,13 +47,18 @@ export default function ArticleCard({ article }) {
       </div>
 
       <h3 className="text-lg font-semibold mt-4 leading-snug">
-        <Link href={article.link} target="_blank" rel="noopener noreferrer" className="hover:underline">
-          {article.title}
+        <Link
+          href={article.link || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline"
+        >
+          {article.title || "Titolo non disponibile"}
         </Link>
       </h3>
 
       <p className="text-sm text-gray-500 mt-1">
-        {article.category.toUpperCase()} · {formatDistanceToNow(article.date, { locale: it })} fa
+        {categoryLabel} · {timeAgo}
       </p>
     </div>
   );
