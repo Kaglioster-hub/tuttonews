@@ -1,4 +1,5 @@
-import { DOMParser } from "linkedom";
+// Edge-safe RSS/ATOM fetcher – NO linkedom, NO rss-parser
+// Usa solo regex + DOM minimale → compatibile con runtime edge
 
 const FEEDS = {
   cronaca: [
@@ -41,6 +42,7 @@ const UA =
 const ACCEPT =
   "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8,*/*;q=0.7";
 
+// --- Utils ---
 function normalizeUrl(raw) {
   try {
     const u = new URL(raw);
@@ -58,23 +60,43 @@ function hostnameOf(link) {
   }
 }
 
-function parseRss(doc) {
-  return [...doc.querySelectorAll("item")].map((it) => ({
-    title: it.querySelector("title")?.textContent?.trim() || "(senza titolo)",
-    link: it.querySelector("link")?.textContent?.trim() || "",
-    date: new Date(it.querySelector("pubDate")?.textContent || Date.now()),
-    image: it.querySelector("enclosure")?.getAttribute("url") || null,
-  }));
+// --- Parser minimale ---
+function extractTag(item, tag) {
+  const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  return match ? match[1].trim() : null;
 }
-function parseAtom(doc) {
-  return [...doc.querySelectorAll("entry")].map((it) => ({
-    title: it.querySelector("title")?.textContent?.trim() || "(senza titolo)",
-    link: it.querySelector("link")?.getAttribute("href") || "",
-    date: new Date(it.querySelector("updated")?.textContent || Date.now()),
-    image: it.querySelector("link[rel='enclosure']")?.getAttribute("href") || null,
-  }));
+function extractAttr(item, tag, attr) {
+  const match = item.match(new RegExp(`<${tag}[^>]*${attr}=["']([^"']+)["']`, "i"));
+  return match ? match[1].trim() : null;
 }
 
+function parseRSS(text) {
+  const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/gi)];
+  return items.map((m) => {
+    const body = m[1];
+    return {
+      title: extractTag(body, "title") || "(senza titolo)",
+      link: extractTag(body, "link") || "",
+      date: new Date(extractTag(body, "pubDate") || Date.now()),
+      image: extractAttr(body, "enclosure", "url"),
+    };
+  });
+}
+
+function parseATOM(text) {
+  const entries = [...text.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)];
+  return entries.map((m) => {
+    const body = m[1];
+    return {
+      title: extractTag(body, "title") || "(senza titolo)",
+      link: extractAttr(body, "link", "href") || "",
+      date: new Date(extractTag(body, "updated") || Date.now()),
+      image: extractAttr(body, "link", "href"), // se rel="enclosure"
+    };
+  });
+}
+
+// --- Fetch wrapper ---
 async function safeFetchRSS(url) {
   try {
     const res = await fetch(url, {
@@ -84,16 +106,17 @@ async function safeFetchRSS(url) {
     const status = res.status;
     if (!res.ok) return { items: [], status };
     const text = await res.text();
-    const { document } = new DOMParser().parseFromString(text, "text/xml");
 
-    let items = parseRss(document);
-    if (!items.length) items = parseAtom(document);
+    let items = parseRSS(text);
+    if (!items.length) items = parseATOM(text);
+
     return { items, status };
   } catch (e) {
     return { items: [], status: "ERR: " + (e.message || e) };
   }
 }
 
+// --- MAIN ---
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
 
@@ -105,6 +128,7 @@ export async function fetchNews(category = null) {
     for (const url of urls) {
       const { items, status } = await safeFetchRSS(url);
       diagnostics.push({ url, status, count: items.length });
+
       for (const item of items) {
         const norm = normalizeUrl(item.link);
         if (!norm || seen.has(norm)) continue;
@@ -116,7 +140,9 @@ export async function fetchNews(category = null) {
           link: item.link,
           date: item.date,
           category: cat,
-          image: item.image || `https://www.google.com/s2/favicons?domain=${hostnameOf(item.link)}&sz=128`,
+          image:
+            item.image ||
+            `https://www.google.com/s2/favicons?domain=${hostnameOf(item.link)}&sz=128`,
           source: hostnameOf(item.link),
         });
       }
