@@ -1,6 +1,4 @@
-// Edge-safe RSS/ATOM fetcher – NO linkedom, NO rss-parser
-// Usa solo regex + DOM minimale → compatibile con runtime edge
-
+// --- FEEDS ---
 const FEEDS = {
   cronaca: [
     "https://www.ansa.it/sito/notizie/cronaca/cronaca_rss.xml",
@@ -37,11 +35,6 @@ const FEEDS = {
   ],
 };
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
-const ACCEPT =
-  "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8,*/*;q=0.7";
-
 // --- Utils ---
 function normalizeUrl(raw) {
   try {
@@ -60,75 +53,80 @@ function hostnameOf(link) {
   }
 }
 
-// --- Parser minimale ---
-function extractTag(item, tag) {
-  const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
-  return match ? match[1].trim() : null;
-}
-function extractAttr(item, tag, attr) {
-  const match = item.match(new RegExp(`<${tag}[^>]*${attr}=["']([^"']+)["']`, "i"));
-  return match ? match[1].trim() : null;
-}
+// --- Parse helpers ---
+function parseRss(doc) {
+  return [...doc.querySelectorAll("item")].map((item) => {
+    const title = item.querySelector("title")?.textContent?.trim() || "(senza titolo)";
+    const link = item.querySelector("link")?.textContent?.trim() || "";
+    const pubDate = item.querySelector("pubDate")?.textContent?.trim();
 
-function parseRSS(text) {
-  const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/gi)];
-  return items.map((m) => {
-    const body = m[1];
-    return {
-      title: extractTag(body, "title") || "(senza titolo)",
-      link: extractTag(body, "link") || "",
-      date: new Date(extractTag(body, "pubDate") || Date.now()),
-      image: extractAttr(body, "enclosure", "url"),
-    };
+    let date = new Date();
+    if (pubDate) {
+      const parsed = new Date(pubDate);
+      if (!isNaN(parsed)) date = parsed;
+    }
+
+    let image = item.querySelector("enclosure")?.getAttribute("url") || null;
+    if (!image) {
+      const mThumb = item.querySelector("media\\:thumbnail")?.getAttribute("url");
+      if (mThumb) image = mThumb;
+    }
+
+    return { title, link, date, image };
   });
 }
 
-function parseATOM(text) {
-  const entries = [...text.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)];
-  return entries.map((m) => {
-    const body = m[1];
-    return {
-      title: extractTag(body, "title") || "(senza titolo)",
-      link: extractAttr(body, "link", "href") || "",
-      date: new Date(extractTag(body, "updated") || Date.now()),
-      image: extractAttr(body, "link", "href"), // se rel="enclosure"
-    };
+function parseAtom(doc) {
+  return [...doc.querySelectorAll("entry")].map((entry) => {
+    const title = entry.querySelector("title")?.textContent?.trim() || "(senza titolo)";
+    const link = entry.querySelector("link")?.getAttribute("href") || "";
+    const updated = entry.querySelector("updated")?.textContent;
+    let date = new Date();
+    if (updated) {
+      const parsed = new Date(updated);
+      if (!isNaN(parsed)) date = parsed;
+    }
+    const image = entry.querySelector("link[rel='enclosure']")?.getAttribute("href") || null;
+    return { title, link, date, image };
   });
 }
 
-// --- Fetch wrapper ---
-async function safeFetchRSS(url) {
+// --- Safe fetch RSS/ATOM ---
+async function safeFetchFeed(url) {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: ACCEPT },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (TuttoNews24 bot; +https://tuttonews.vrabo.it)",
+        Accept: "application/rss+xml, application/atom+xml, application/xml;q=0.9,*/*;q=0.7",
+      },
       next: { revalidate: 300 },
     });
-    const status = res.status;
-    if (!res.ok) return { items: [], status };
+
+    if (!res.ok) return { items: [], status: res.status };
+
     const text = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, "application/xml");
 
-    let items = parseRSS(text);
-    if (!items.length) items = parseATOM(text);
+    let items = parseRss(doc);
+    if (!items.length) items = parseAtom(doc);
 
-    return { items, status };
+    return { items, status: res.status };
   } catch (e) {
-    return { items: [], status: "ERR: " + (e.message || e) };
+    console.error("Errore fetch feed:", url, e.message || e);
+    return { items: [], status: "ERR" };
   }
 }
 
 // --- MAIN ---
 export async function fetchNews(category = null) {
   const sources = category ? { [category]: FEEDS[category] } : FEEDS;
-
   const results = [];
-  const diagnostics = [];
   const seen = new Set();
 
   for (const [cat, urls] of Object.entries(sources)) {
     for (const url of urls) {
-      const { items, status } = await safeFetchRSS(url);
-      diagnostics.push({ url, status, count: items.length });
-
+      const { items } = await safeFetchFeed(url);
       for (const item of items) {
         const norm = normalizeUrl(item.link);
         if (!norm || seen.has(norm)) continue;
@@ -137,7 +135,8 @@ export async function fetchNews(category = null) {
         results.push({
           id: norm,
           title: item.title,
-          link: item.link,
+          link: addReferral(item.link),
+          original: item.link,
           date: item.date,
           category: cat,
           image:
@@ -150,5 +149,9 @@ export async function fetchNews(category = null) {
   }
 
   results.sort((a, b) => b.date - a.date);
-  return { articles: results, diagnostics };
+  return results;
+}
+
+function addReferral(link) {
+  return link.includes("?") ? `${link}&ref=vrabo` : `${link}?ref=vrabo`;
 }
