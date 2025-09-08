@@ -1,12 +1,11 @@
 // src/app/page.jsx
-export const dynamic = "force-dynamic";        // evita SSG in build
-// export const fetchCache = "force-no-store";  // opzionale: niente cache server
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { fetchNews } from "@/lib/fetchNews";
 import ArticleCard from "@/components/ArticleCard";
 import DonateButton from "@/components/DonateButton";
 
-// ✅ categorie visualizzate
 const CATEGORIES = [
   { key: "tutte", label: "Tutte" },
   { key: "cronaca", label: "Cronaca" },
@@ -18,9 +17,14 @@ const CATEGORIES = [
   { key: "tecnologia", label: "Tecnologia" },
 ];
 
-export default async function Home({ searchParams }) {
-  const sort = searchParams?.sort || "recenti";
-  const category = searchParams?.cat || null;
+export default async function Home(props) {
+  // ✅ compatibilità Next 15: attende searchParams se è una Promise
+  const sp = (props?.searchParams && typeof props.searchParams.then === "function")
+    ? await props.searchParams
+    : (props?.searchParams || {});
+
+  const sort = sp?.sort || "recenti";
+  const category = sp?.cat || null;
 
   let articles = [];
   try {
@@ -88,9 +92,7 @@ export default async function Home({ searchParams }) {
 
       {/* Sezione Donazioni */}
       <section className="text-center pt-10 border-t border-gray-300 dark:border-gray-700">
-        <h2 className="text-2xl font-bold mb-4">
-          Sostieni TuttoNews24
-        </h2>
+        <h2 className="text-2xl font-bold mb-4">Sostieni TuttoNews24</h2>
         <p className="text-gray-600 dark:text-gray-300 max-w-lg mx-auto mb-6">
           Offriamo un servizio gratuito, ma puoi supportarci con una donazione
           volontaria. L’importo consigliato è <strong>18,00 €</strong>.
