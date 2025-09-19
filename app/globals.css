@@ -12,41 +12,43 @@ html, body {
 /* Header */
 header {
   @apply sticky top-0 z-50 flex items-center justify-between px-6 py-4;
-  background: rgba(13, 13, 13, 0.95);
-  border-bottom: 1px solid rgba(229, 9, 20, 0.4);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 15, 15, 0.95);
+  border-bottom: 1px solid rgba(229, 9, 20, 0.5);
+  backdrop-blur-md;
 }
 header nav a {
-  @apply px-3 py-1 transition-colors text-gray-300;
+  @apply px-3 py-1 text-gray-300 transition-colors;
 }
 header nav a:hover {
-  color: #ff4d4d;
+  color: #e50914;
 }
 header .logo {
-  @apply flex items-center gap-3 text-2xl font-bold;
+  @apply flex items-center gap-2 text-3xl font-bold;
   background: linear-gradient(to right, #e50914, #ff4d4d);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Grid layout */
+/* Main container */
 main {
   @apply max-w-7xl mx-auto px-6 py-12;
 }
+
+/* Grid */
 .grid-news {
   @apply grid gap-8 md:grid-cols-2 lg:grid-cols-3;
 }
 
-/* Card quadrata */
+/* Card quadrata VRABO */
 .news-card {
-  @apply aspect-square rounded-2xl p-6 flex flex-col justify-between 
-         bg-gradient-to-br from-neutral-900 to-neutral-800 
+  @apply aspect-square rounded-2xl p-6 flex flex-col justify-between
+         bg-gradient-to-br from-neutral-900 to-neutral-800
          border border-neutral-700 transition cursor-pointer;
 }
 .news-card:hover {
   transform: translateY(-6px) scale(1.02);
-  border-color: rgba(229, 9, 20, 0.7);
-  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.35);
+  border-color: rgba(229, 9, 20, 0.9);
+  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.45);
 }
 .news-card h3 {
   @apply text-lg font-semibold text-white line-clamp-3;
@@ -56,4 +58,9 @@ main {
 }
 .news-card span {
   @apply text-xs text-red-400 font-medium mt-4;
+}
+
+/* Footer */
+footer {
+  @apply mt-20 py-10 border-t border-neutral-800 text-center text-sm opacity-80;
 }
