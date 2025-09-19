@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Base === */
+html, body {
+  @apply font-sans antialiased;
+  background-color: #0d0d0d;
+  color: #e5e5e5;
+}
+
+/* Header */
+header {
+  @apply sticky top-0 z-50 flex items-center justify-between px-6 py-4;
+  background: rgba(13, 13, 13, 0.95);
+  border-bottom: 1px solid rgba(229, 9, 20, 0.3);
+  backdrop-filter: blur(12px);
+}
+header nav a { @apply px-3 py-1 transition-colors text-gray-300; }
+header nav a:hover { color: #ff4d4d; }
+header .logo {
+  @apply flex items-center gap-2 font-bold text-xl;
+  background: linear-gradient(to right, #e50914, #ff4d4d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Grid */
+main { @apply max-w-6xl mx-auto px-4 py-10; }
+.grid-news { @apply grid gap-6 md:grid-cols-2 lg:grid-cols-3; }
+
+/* Cards */
+.section-card {
+  @apply rounded-2xl p-5 bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700 transition;
+}
+.section-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(229, 9, 20, 0.7);
+  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.35);
+}

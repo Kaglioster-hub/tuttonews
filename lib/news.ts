@@ -11,11 +11,14 @@ export type NewsItem = {
   description?: string;
 };
 
-const parser = new Parser({ timeout: 8000, headers: { "User-Agent": "TuttoNews24/1.0 (+vrabo.it)" }});
+const parser = new Parser({
+  timeout: 8000,
+  headers: { "User-Agent": "TuttoNews24/1.0 (+vrabo.it)" }
+});
 
 function clean(t?: string) {
   if (!t) return "";
-  return he.decode(t.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim());
+  return he.decode(t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
 }
 function host(u: string) {
   try { return new URL(u).hostname.replace(/^www\./,""); } catch { return ""; }
