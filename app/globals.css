@@ -5,36 +5,55 @@
 /* === Base === */
 html, body {
   @apply font-sans antialiased;
-  background-color: #0d0d0d;
-  color: #e5e5e5;
+  background-color: #0b0b0b;
+  color: #f5f5f5;
 }
 
 /* Header */
 header {
   @apply sticky top-0 z-50 flex items-center justify-between px-6 py-4;
   background: rgba(13, 13, 13, 0.95);
-  border-bottom: 1px solid rgba(229, 9, 20, 0.3);
+  border-bottom: 1px solid rgba(229, 9, 20, 0.4);
   backdrop-filter: blur(12px);
 }
-header nav a { @apply px-3 py-1 transition-colors text-gray-300; }
-header nav a:hover { color: #ff4d4d; }
+header nav a {
+  @apply px-3 py-1 transition-colors text-gray-300;
+}
+header nav a:hover {
+  color: #ff4d4d;
+}
 header .logo {
-  @apply flex items-center gap-2 font-bold text-xl;
+  @apply flex items-center gap-3 text-2xl font-bold;
   background: linear-gradient(to right, #e50914, #ff4d4d);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Grid */
-main { @apply max-w-6xl mx-auto px-4 py-10; }
-.grid-news { @apply grid gap-6 md:grid-cols-2 lg:grid-cols-3; }
-
-/* Cards */
-.section-card {
-  @apply rounded-2xl p-5 bg-gradient-to-br from-neutral-900 to-neutral-800 border border-neutral-700 transition;
+/* Grid layout */
+main {
+  @apply max-w-7xl mx-auto px-6 py-12;
 }
-.section-card:hover {
-  transform: translateY(-4px);
+.grid-news {
+  @apply grid gap-8 md:grid-cols-2 lg:grid-cols-3;
+}
+
+/* Card quadrata */
+.news-card {
+  @apply aspect-square rounded-2xl p-6 flex flex-col justify-between 
+         bg-gradient-to-br from-neutral-900 to-neutral-800 
+         border border-neutral-700 transition cursor-pointer;
+}
+.news-card:hover {
+  transform: translateY(-6px) scale(1.02);
   border-color: rgba(229, 9, 20, 0.7);
-  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.35);
+  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.35);
+}
+.news-card h3 {
+  @apply text-lg font-semibold text-white line-clamp-3;
+}
+.news-card p {
+  @apply text-sm text-gray-400 mt-2 line-clamp-3;
+}
+.news-card span {
+  @apply text-xs text-red-400 font-medium mt-4;
 }
