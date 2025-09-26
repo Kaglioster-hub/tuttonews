@@ -1,84 +1,251 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ==========================================================
+   TuttoNews24 – Add-on safe (append-only, no breaking)
+   ========================================================== */
 
-/* === BASE === */
-html {
-  scroll-behavior: smooth;
-}
-body {
-  @apply font-sans antialiased transition-colors duration-500;
-  background-color: #0b0b0b;
-  color: #f5f5f5;
+/* --- Grid reattiva per le card --- */
+.news-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.25rem;
+  align-items:stretch;
 }
 
-/* === TIPOGRAFIA === */
-h1,h2,h3,h4,h5,h6 {
-  font-family: "Playfair Display", serif;
-  @apply font-bold tracking-tight;
+/* --- Card potenziata (flex, hover morbido) --- */
+.card{
+  display:flex; flex-direction:column; gap:.6rem;
+  min-height:220px;
+  transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  will-change:transform;
 }
-p {
-  font-family: "Inter", sans-serif;
-  @apply leading-relaxed text-base;
+.card:hover{ transform:translateY(-3px); box-shadow:var(--shadow-aero-strong); }
+.card:focus-within{ outline:none; box-shadow:0 0 0 6px var(--ring); }
+
+/* --- Titoli dentro le card: colore pieno (no gradiente), clamp --- */
+.card h1,.card h2,.card h3,.card h4,.card h5,.card h6,
+.card .news-title{
+  -webkit-text-fill-color:initial!important;
+  background:none!important;
+  color:var(--text)!important;
+  font-weight:800; line-height:1.25;
+  font-size:clamp(1.02rem,.95rem + .45vw,1.15rem);
+  margin:0 0 .25rem 0;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
 }
-a {
-  @apply transition-colors duration-300;
-  color: #e5e7eb; /* grigio chiaro */
-}
-a:hover {
-  color: #e50914; /* rosso accento */
+.card .news-title a{ color:inherit; text-decoration:none; }
+.card .news-title a:hover{ text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px; }
+
+/* --- Kicker/categoria come badge --- */
+.kicker{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.28rem .6rem; border-radius:999px;
+  font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background:color-mix(in oklab,var(--gold-2) 22%,var(--glass));
+  border:1px solid color-mix(in oklab,var(--gold-2) 40%,var(--border));
+  color:#111;
 }
 
-/* === HEADER === */
-header {
-  @apply sticky top-0 z-50 flex items-center justify-between px-6 py-4;
-  background: rgba(15, 15, 15, 0.95);
-  border-bottom: 1px solid rgba(229, 9, 20, 0.4);
-  backdrop-filter: blur(10px);
+/* --- Snippet e meta --- */
+.card .snippet{
+  color:color-mix(in oklab,var(--text) 75%,transparent);
+  font-size:.95rem;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
 }
-header nav a {
-  @apply px-3 py-1 text-gray-300;
+.card .source{
+  margin-top:auto; display:flex; align-items:center; gap:.5rem;
+  font-size:.84rem; color:var(--muted);
 }
-header nav a:hover {
-  color: #e50914;
+.card .source::before{ content:"●"; font-size:.6rem; color:var(--gold-1); }
+
+/* --- Navbar: pill attiva + hover --- */
+.navbar .menu a{ position:relative; padding:.5rem 1rem; border-radius:999px; }
+.navbar .menu a[aria-current="page"], .navbar .menu a[data-active="true"]{
+  background:color-mix(in oklab,var(--gold-2) 24%,transparent);
+  color:var(--text);
 }
-header .logo {
-  @apply flex items-center gap-2 text-3xl font-bold;
-  background: linear-gradient(to right, #e50914, #ff4d4d);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.navbar .menu a:hover{
+  background:color-mix(in oklab,var(--gold-2) 14%,transparent);
 }
 
-/* === GRID LAYOUT === */
-main {
-  @apply max-w-7xl mx-auto px-6 py-12;
-}
-.grid-news {
-  @apply grid gap-8 md:grid-cols-2 lg:grid-cols-3;
-}
-
-/* === CARD === */
-.news-card {
-  @apply aspect-square rounded-2xl p-6 flex flex-col justify-between
-         bg-gradient-to-br from-neutral-900 to-neutral-800
-         border border-neutral-700 transition cursor-pointer;
-}
-.news-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  border-color: rgba(229, 9, 20, 0.8);
-  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.4);
-}
-.news-card h3 {
-  @apply text-lg font-semibold text-white line-clamp-3;
-}
-.news-card p {
-  @apply text-sm text-gray-400 mt-2 line-clamp-3;
-}
-.news-card span {
-  @apply text-xs text-red-400 font-medium mt-4;
+/* --- Skeleton per loading --- */
+.skeleton{
+  border-radius:1.25rem;
+  background:linear-gradient(90deg,var(--bg-2),
+    color-mix(in oklab,var(--bg-2) 65%,var(--glass)),var(--bg-2));
+  background-size:200% 100%;
+  animation:shimmer 1.4s linear infinite;
 }
 
-/* === FOOTER === */
-footer {
-  @apply mt-20 py-10 border-t border-neutral-800 text-center text-sm opacity-80;
+/* --- Utility clamp riutilizzabili --- */
+.u-clamp-2,.u-clamp-3,.u-clamp-4{ display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; }
+.u-clamp-2{ -webkit-line-clamp:2; }
+.u-clamp-3{ -webkit-line-clamp:3; }
+.u-clamp-4{ -webkit-line-clamp:4; }
+
+/* --- Scrollbar un filo più sottile sulla lista --- */
+.news-grid *{ scrollbar-width:thin; }
+/* ====== Fix sovrapposizioni card (safe append) ====== */
+
+/* Layout solido: header (badge), body (titolo+snippet), footer (fonte) */
+.news-card{
+  display:grid;
+  grid-template-rows: auto 1fr auto;   /* testa / contenuto / piede */
+  gap:.55rem;
+  height:100%;
+  position:relative;
+  isolation:isolate;                    /* evita overlay di pseudo-elementi esterni */
+}
+
+/* Titolo: niente gradiente, righe stabili, parole spezzabili */
+.news-card .news-title,
+.news-card h1,.news-card h2,.news-card h3,.news-card h4,.news-card h5,.news-card h6{
+  -webkit-text-fill-color: initial !important;
+  background: none !important;
+  color: var(--text) !important;
+  font-weight: 800;
+  line-height: 1.28;
+  font-size: clamp(1.02rem, 0.95rem + .45vw, 1.15rem);
+  margin: 0;
+  overflow-wrap: anywhere;      /* spezza URL o parole lunghe */
+  hyphens: auto;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 3;        /* max 3 righe */
+}
+.news-card .news-title a{ color: inherit; text-decoration: none; display:block; }
+
+/* Snippet: corpo fluido con clamp coerente */
+.news-card .snippet{
+  color: color-mix(in oklab, var(--text) 75%, transparent);
+  line-height: 1.45;
+  font-size: .95rem;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+}
+
+/* Piede con fonte fissato in basso */
+.news-card .source{
+  align-self: end;
+  display:flex; align-items:center; gap:.5rem;
+  font-size:.86rem; color:var(--muted);
+}
+.news-card .source::before{ content:"●"; font-size:.6rem; color:var(--gold-1); }
+
+/* Badge categoria */
+.news-card .kicker{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.28rem .6rem; border-radius:999px;
+  font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background: color-mix(in oklab, var(--gold-2) 22%, var(--glass));
+  border: 1px solid color-mix(in oklab, var(--gold-2) 40%, var(--border));
+  color:#111;
+}
+
+/* Card container (se usi .card) -> diventa wrapper di .news-card */
+.card{ display:block; }
+.card > .news-card{ height:100%; }
+
+/* 🔧 FIX duro: se il prefisso titolo (es. “tut”) è messo con ::before/absolute,
+   rimettiamolo in flusso per evitare overlay sul titolo */
+.news-card .prefix,
+.news-card .news-title::before{
+  position: static !important;
+  display: inline !important;
+  left: auto !important; top: auto !important; transform: none !important;
+  margin-right: .35rem !important;
+  content: attr(data-prefix);
+}
+
+/* Griglia delle card nella pagina */
+.news-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* Hover/focus morbidi senza spingere testi */
+.card{
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.card:hover{ transform: translateY(-3px); box-shadow: var(--shadow-aero-strong); }
+.card:focus-within{ outline: none; box-shadow: 0 0 0 6px var(--ring); }
+/* ===== News card: layout solido senza sovrapposizioni ===== */
+.news-card{
+  display:grid;
+  grid-template-rows:auto 1fr auto;   /* header / body / footer */
+  gap:.6rem;
+  height:100%;
+  position:relative;
+  isolation:isolate;
+}
+
+/* Titolo leggibile (niente gradiente), parole lunghe spezzate, clamp */
+.news-card h1,.news-card h2,.news-card h3,.news-card h4,.news-card h5,.news-card h6,
+.news-card .news-title{
+  -webkit-text-fill-color:initial!important;
+  background:none!important;
+  color:var(--text)!important;
+  font-weight:800; line-height:1.28;
+  font-size:clamp(1.02rem,.95rem + .45vw,1.15rem);
+  margin:0;
+  overflow-wrap:anywhere; hyphens:auto;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
+  -webkit-line-clamp:3;                       /* max 3 righe */
+}
+.news-card .news-title a{ color:inherit; text-decoration:none; display:block; }
+
+/* Estratto */
+.news-card .snippet{
+  color:color-mix(in oklab,var(--text) 75%,transparent);
+  line-height:1.45; font-size:.95rem;
+  overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden;
+  -webkit-line-clamp:3;
+}
+
+/* Fonte in basso */
+.news-card .source{
+  align-self:end; display:flex; align-items:center; gap:.5rem;
+  font-size:.86rem; color:var(--muted);
+}
+.news-card .source::before{ content:"●"; font-size:.6rem; color:var(--gold-1); }
+
+/* Badge categoria (se presente) */
+.news-card .kicker{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.28rem .6rem; border-radius:999px;
+  font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background:color-mix(in oklab,var(--gold-2) 22%,var(--glass));
+  border:1px solid color-mix(in oklab,var(--gold-2) 40%,var(--border));
+  color:#111;
+}
+
+/* Disinnesca prefissi assoluti (es. “tut”) */
+.news-card [data-prefix], .news-card .prefix, .news-card .news-title::before{
+  position:static!important; left:auto!important; top:auto!important; transform:none!important;
+  display:inline!important; margin-right:.35rem!important; content:attr(data-prefix);
+}
+
+/* Griglia pagina (se usi .grid-news) */
+.grid-news{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:1.25rem; align-items:stretch;
+}
+.grid-news > *{ height:100%; min-height:240px; }
+/* Menu pill centrato */
+.menu-pills a{
+  border-radius:999px;
+  transition:background .2s ease,color .2s ease;
+}
+.menu-pills a[aria-current="page"]{
+  background: color-mix(in oklab, var(--gold-2) 24%, transparent);
+  color: var(--text);
+}
+.menu-pills a:hover{
+  background: color-mix(in oklab, var(--gold-2) 14%, transparent);
 }
