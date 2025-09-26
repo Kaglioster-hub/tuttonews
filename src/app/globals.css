@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 /* merged: globals.css */
 /* ==========================================================
    TuttoNews24 – Add-on safe (append-only, no breaking)
@@ -255,5 +254,6 @@
 .menu-pills a:hover{
   background: color-mix(in oklab, var(--gold-2) 14%, transparent);
 }
+
 
 
