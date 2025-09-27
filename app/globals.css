@@ -385,3 +385,26 @@ body{
 @keyframes shimmer{ to{ background-position-x:-200% } }
 /* === TN24 ULTIMATE END === */
 
+
+/* === TN24 DARK START === */
+html.dark{ color-scheme: dark }
+.dark{
+  /* palette scura coerente con il tuo "ultimate" */
+  --page:#0a0f17;         /* sfondo pagina */
+  --surface:#0f1624;      /* card */
+  --ink:#e5e7eb;          /* testo principale */
+  --muted:#9aa3b2;        /* testo secondario */
+  --accent:#e10600;       /* rosso brand */
+  --border:#1f2735;       /* bordi */
+  --ring:rgba(225,6,0,.28);
+  --shadow: 0 12px 34px rgba(0,0,0,.55), 0 3px 10px rgba(0,0,0,.38);
+}
+/* rifiniture scure (usano già le var, qui solo tocchi) */
+.dark body{ background:var(--page); color:var(--ink) }
+.dark .news-card,.dark .card{ border-color:var(--border); box-shadow:var(--shadow) }
+.dark .news-media::after{ background:linear-gradient(to bottom, transparent 60%, rgba(0,0,0,.22)) }
+.dark .snippet{ color:#cbd5e1 }
+.dark .menu-pills a[aria-current="page"]{ background:rgba(225,6,0,.16); border:1px solid #3b4250; color:#fff }
+.dark .menu-pills a:hover{ background:rgba(225,6,0,.10) }
+/* === TN24 DARK END === */
+
