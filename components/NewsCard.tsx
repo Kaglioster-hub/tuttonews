@@ -1,73 +1,44 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 
 export type NewsItem = {
-  id?: string;
+  id: string;
   title: string;
   link: string;
   source: string;
   description?: string;
   image?: string;
-  enclosure?: { url?: string };
-  ["media:content"]?: { url?: string } | Array<{ url?: string }>;
 };
 
-function firstDefined<T>(...v: (T | undefined | null)[]) { return v.find(Boolean) as T | undefined; }
-function fromFeedMedia(it: NewsItem) {
-  const m = it["media:content"];
-  if (Array.isArray(m)) return m.find(x => x?.url)?.url;
-  return m?.url;
-}
+const og = (url: string) => `/api/og?url=${encodeURIComponent(url)}`;
 
 export function NewsCard({ it }: { it: NewsItem }) {
-  const initial = useMemo(
-    () => firstDefined(it.image, it.enclosure?.url, fromFeedMedia(it)),
-    [it]
-  );
-  const [img, setImg] = useState<string | null>(initial ?? null);
-
-  useEffect(() => {
-    if (img || !it.link) return;
-    const ctrl = new AbortController();
-    fetch(`/api/ogimage?url=${encodeURIComponent(it.link)}`, { signal: ctrl.signal })
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => {
-        const found: string | undefined = d?.src;
-        if (found) setImg(`/api/img?src=${encodeURIComponent(found)}`);
-      })
-      .catch(() => {});
-    return () => ctrl.abort();
-  }, [it.link, img]);
+  // Se già abbiamo una image assoluta, usala; altrimenti estraila via /api/og
+  const imgSrc = it.image && /^https?:\/\//i.test(it.image) ? it.image : og(it.link);
 
   return (
-    <article className="card news-card rounded-2xl border border-[color:var(--border)] bg-white shadow-soft overflow-hidden">
-      <div className="news-media relative aspect-[16/9] bg-black/5">
-        {img ? (
-          <Image
-            src={img}
-            alt={it.title}
-            fill
-            unoptimized
-            className="object-cover"
-            sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="skeleton w-full h-full" />
-        )}
+    <article className="news-card">
+      <div className="news-media relative">
+        <Image
+          src={imgSrc}
+          alt={it.title}
+          fill
+          sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw"
+          className="object-cover"
+          priority={false}
+        />
       </div>
 
       <div className="p-4 flex flex-col gap-2">
-        <h3 className="news-title">
-          <Link href={it.link} target="_blank" rel="noopener noreferrer">{it.title}</Link>
-        </h3>
+        <Link href={it.link} target="_blank" rel="noopener noreferrer" className="block">
+          <h3 className="news-title">{it.title}</h3>
+        </Link>
+
         {it.description && <p className="snippet">{it.description}</p>}
+
         <div className="source">{it.source}</div>
       </div>
     </article>
   );
 }
-
-export default NewsCard;
-
