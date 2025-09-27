@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ==========================================================
    TuttoNews24 – Add-on safe (append-only, no breaking)
    ========================================================== */
@@ -320,3 +324,65 @@ a{ color:var(--brand); }
  nav li{margin:0}
  .grid-news{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.25rem;align-items:stretch}
  .card,.news-card{height:100%}
+
+/* === TN24: START === */
+/* ========== TN24 UI (light) ========== */
+:root{ --bg:#fff; --text:#111; --muted:#666; --brand:#e50914; --border:#eaeaea; --ring:rgba(229,9,20,.25); }
+html,body{ background:var(--bg); color:var(--text); }
+*{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+
+/* container centrale */
+.tn-container{ width:100%; max-width:72rem; margin-inline:auto; padding-inline:1rem; }
+@media (min-width:640px){ .tn-container{ padding-inline:1.5rem; } }
+@media (min-width:1024px){ .tn-container{ padding-inline:2rem; } }
+
+/* navbar pills */
+.menu-pills a{ border-radius:999px; padding:.4rem .9rem; transition:background .15s,color .15s; }
+.menu-pills a[aria-current="page"]{ background:rgba(229,9,20,.12); color:#000; }
+.menu-pills a:hover{ background:rgba(229,9,20,.08); }
+
+/* griglia fallback (oltre Masonry) */
+.news-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1.25rem; align-items:stretch; }
+
+/* CARD pulite */
+.news-card,
+.card{
+  background:#fff; border:1px solid var(--border);
+  border-radius:16px; box-shadow:0 8px 22px rgba(0,0,0,.06);
+  overflow:hidden; transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.news-card:hover{ transform:translateY(-2px); border-color:#f0c8cc; box-shadow:0 10px 28px rgba(0,0,0,.08); }
+
+/* titoli e testi nelle card */
+.news-card .news-title,
+.news-card h1,.news-card h2,.news-card h3,.news-card h4,.news-card h5,.news-card h6{
+  -webkit-text-fill-color: initial !important; background:none !important;
+  color:var(--text) !important; font-weight:800; line-height:1.28;
+  font-size:clamp(1.05rem,0.95rem + .5vw,1.2rem);
+  margin:0; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
+  overflow-wrap:anywhere; hyphens:auto;
+}
+.news-card .snippet{
+  color:color-mix(in oklab, #111 72%, transparent);
+  font-size:.96rem; line-height:1.5;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
+}
+.news-card .source{ margin-top:.25rem; font-size:.86rem; color:#666; display:flex; gap:.5rem; align-items:center; }
+.news-card .source::before{ content:"●"; font-size:.62rem; color:var(--brand); }
+
+/* badge categoria */
+.kicker{
+  background:#fff1f1; border:1px solid #ffd6d6; color:#111;
+  padding:.28rem .6rem; border-radius:999px; font-size:.72rem;
+  letter-spacing:.08em; font-weight:700; text-transform:uppercase;
+}
+
+/* link accentati */
+a{ color:var(--brand); }
+a:hover{ text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:2px; }
+
+/* utility */
+.rounded-2xl{ border-radius:1rem; }
+.shadow-soft{ box-shadow:0 8px 22px rgba(0,0,0,.06); }
+/* === TN24: END === */
+

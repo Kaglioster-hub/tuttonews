@@ -8,10 +8,11 @@ export function NewsGrid({ items }: { items: NewsItem[] }) {
   return (
     <Masonry
       breakpointCols={breakpointColumnsObj}
-      className="flex gap-6"
-      columnClassName="masonry-column flex flex-col gap-6"
+      className="flex gap-6 md:gap-8"
+      columnClassName="masonry-column flex flex-col gap-6 md:gap-8"
     >
       {items.map((it) => <NewsCard key={it.id} it={it} />)}
     </Masonry>
   );
 }
+
