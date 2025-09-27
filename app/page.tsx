@@ -10,7 +10,7 @@ export default async function HomePage() {
   );
 
   return (
-    <main>
+    <main className="container-page">
       <h1 className="text-4xl font-bold mb-4 text-center logo">TuttoNews24</h1>
       <p className="text-center text-gray-400 mb-12">
         Le ultime notizie dalle principali testate italiane.
@@ -24,3 +24,4 @@ export default async function HomePage() {
     </main>
   );
 }
+
