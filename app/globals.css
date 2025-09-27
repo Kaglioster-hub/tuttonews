@@ -1,3 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* base minimale (opzionale) */
+:root{ color-scheme:dark light }
+html{ scroll-behavior:smooth }
+body{ min-height:100svh }
 /* ==========================================================
    TuttoNews24 – Add-on safe (append-only, no breaking)
    ========================================================== */
@@ -249,3 +257,4 @@
 .menu-pills a:hover{
   background: color-mix(in oklab, var(--gold-2) 14%, transparent);
 }
+
