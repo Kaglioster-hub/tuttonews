@@ -42,3 +42,4 @@ export function NewsCard({ it }: { it: NewsItem }) {
     </article>
   );
 }
+
