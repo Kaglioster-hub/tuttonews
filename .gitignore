@@ -33,3 +33,5 @@ lerna-debug.log*
 # VSCode
 .vscode
 .vercel
+pnpm-lock.yaml
+.pnpm-store
