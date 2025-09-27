@@ -258,3 +258,71 @@ body{ min-height:100svh }
   background: color-mix(in oklab, var(--gold-2) 14%, transparent);
 }
 
+/* === TUTTONEWS ADDON START === */
+:root{
+  --bg:#0a0a0a; --bg-2:#111; --text:#e5e5e5; --muted:#a3a3a3;
+  --gold-1:#facc15; --gold-2:#eab308; --border:#262626; --glass:rgba(255,255,255,.05);
+  --ring: rgba(234,179,8,.35);
+  --shadow-aero-strong: 0 10px 24px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35);
+}
+html{color-scheme:dark;background:var(--bg)}
+body{background:var(--bg);color:var(--text);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+a{color:inherit}
+
+.container, .wrap, main{max-width:1200px;margin-inline:auto;padding-inline:1rem}
+
+.news-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.25rem; align-items:stretch;
+}
+
+/* wrapper card generico */
+.card{display:block; transition:transform .25s ease, box-shadow .25s ease}
+.card:hover{ transform:translateY(-3px); box-shadow:var(--shadow-aero-strong) }
+.card:focus-within{ outline:none; box-shadow:0 0 0 6px var(--ring) }
+
+/* layout card news (header/body/footer) */
+.news-card{
+  display:grid; grid-template-rows:auto 1fr auto; gap:.6rem; height:100%; position:relative; isolation:isolate;
+  background:var(--bg-2); border:1px solid var(--border); border-radius:1rem; padding:1rem;
+}
+
+/* titolo leggibile, senza gradienti */
+.news-card h1,.news-card h2,.news-card h3,.news-card h4,.news-card h5,.news-card h6,
+.news-card .news-title{
+  -webkit-text-fill-color:initial!important; background:none!important; color:var(--text)!important;
+  font-weight:800; line-height:1.28; font-size:clamp(1.02rem,.95rem + .45vw,1.15rem); margin:0;
+  overflow-wrap:anywhere; hyphens:auto; display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
+}
+.news-card .news-title a{ color:inherit; text-decoration:none; display:block }
+
+/* estratto */
+.news-card .snippet{
+  color:color-mix(in oklab,var(--text) 75%,transparent);
+  line-height:1.45; font-size:.95rem;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:3;
+}
+
+/* fonte */
+.news-card .source{
+  align-self:end; display:flex; gap:.5rem; font-size:.86rem; color:var(--muted)
+}
+.news-card .source::before{ content:"●"; font-size:.6rem; color:var(--gold-1) }
+
+/* badge categoria */
+.kicker{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.28rem .6rem; border-radius:999px;
+  font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  background: color-mix(in oklab, var(--gold-2) 22%, var(--glass));
+  border: 1px solid color-mix(in oklab, var(--gold-2) 40%, var(--border));
+  color:#111;
+}
+
+/* menu pills (header) */
+.menu-pills a{border-radius:999px; padding:.5rem .9rem; transition:background .2s,color .2s}
+.menu-pills a[aria-current="page"]{background:color-mix(in oklab,var(--gold-2) 24%,transparent)}
+.menu-pills a:hover{background:color-mix(in oklab,var(--gold-2) 14%,transparent)}
+/* === TUTTONEWS ADDON END === */
+
