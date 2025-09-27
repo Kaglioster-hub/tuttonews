@@ -21,7 +21,7 @@ function fromFeedMedia(it: NewsItem) {
   return m?.url;
 }
 
-export default function NewsCard({ it }: { it: NewsItem }) {
+export function NewsCard({ it }: { it: NewsItem }) {
   const initial = useMemo(
     () => firstDefined(it.image, it.enclosure?.url, fromFeedMedia(it)),
     [it]
@@ -68,3 +68,6 @@ export default function NewsCard({ it }: { it: NewsItem }) {
     </article>
   );
 }
+
+export default NewsCard;
+
