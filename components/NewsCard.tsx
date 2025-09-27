@@ -1,27 +1,70 @@
-// TN24 modern card v2
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 
-export type NewsItem = { id: string; title: string; link: string; source: string; description?: string; image?: string };
+export type NewsItem = {
+  id?: string;
+  title: string;
+  link: string;
+  source: string;
+  description?: string;
+  image?: string;
+  enclosure?: { url?: string };
+  ["media:content"]?: { url?: string } | Array<{ url?: string }>;
+};
 
-export function NewsCard({ it }: { it: NewsItem }) {
+function firstDefined<T>(...v: (T | undefined | null)[]) { return v.find(Boolean) as T | undefined; }
+function fromFeedMedia(it: NewsItem) {
+  const m = it["media:content"];
+  if (Array.isArray(m)) return m.find(x => x?.url)?.url;
+  return m?.url;
+}
+
+export default function NewsCard({ it }: { it: NewsItem }) {
+  const initial = useMemo(
+    () => firstDefined(it.image, it.enclosure?.url, fromFeedMedia(it)),
+    [it]
+  );
+  const [img, setImg] = useState<string | null>(initial ?? null);
+
+  useEffect(() => {
+    if (img || !it.link) return;
+    const ctrl = new AbortController();
+    fetch(`/api/ogimage?url=${encodeURIComponent(it.link)}`, { signal: ctrl.signal })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const found: string | undefined = d?.src;
+        if (found) setImg(`/api/img?src=${encodeURIComponent(found)}`);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [it.link, img]);
+
   return (
-    <motion.article whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-      className="news-card group rounded-2xl overflow-hidden border border-neutral-200 bg-white shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="relative w-full h-52">
-        <Image src={it.image || "/placeholder.jpg"} alt={it.title} fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
-          sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw"/>
+    <article className="card news-card rounded-2xl border border-[color:var(--border)] bg-white shadow-soft overflow-hidden">
+      <div className="news-media relative aspect-[16/9] bg-black/5">
+        {img ? (
+          <Image
+            src={img}
+            alt={it.title}
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="(max-width:768px) 100vw, (max-width:1200px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="skeleton w-full h-full" />
+        )}
       </div>
+
       <div className="p-4 flex flex-col gap-2">
-        <Link href={it.link} target="_blank" rel="noopener noreferrer" className="block">
-          <h3 className="news-title">{it.title}</h3>
-        </Link>
+        <h3 className="news-title">
+          <Link href={it.link} target="_blank" rel="noopener noreferrer">{it.title}</Link>
+        </h3>
         {it.description && <p className="snippet">{it.description}</p>}
         <div className="source">{it.source}</div>
       </div>
-    </motion.article>
+    </article>
   );
 }
