@@ -339,3 +339,53 @@ h1,h2,h3{ letter-spacing:.005em }
 section{ margin-block: 1.25rem }
 /* === TUTTONEWS THEME END === */
 
+
+
+/* --- TuttoNews24: patch leggibilità (light, white/red/black) --- */
+:root{ --bg:#fff; --text:#111; --muted:#555; --brand:#e50914; --border:#eaeaea; --ring:rgba(229,9,20,.25); }
+html,body{ background:var(--bg); color:var(--text); }
+
+/* allarga la griglia: vale sia per .news-grid che per main .grid */
+.news-grid,
+main .grid{ grid-template-columns:repeat(auto-fit,minmax(360px,1fr)) !important; gap:1.25rem !important; }
+
+/* card leggibili (copre sia i tuoi <article> in grid che .news-card/.card) */
+.card,.news-card, main .grid > article{
+  background:#fff; border:1px solid var(--border);
+  border-radius:16px; box-shadow:0 8px 22px rgba(0,0,0,.06);
+  padding:18px 22px;
+}
+
+/* titoli */
+.news-card .news-title, main .grid > article h3{
+  font-weight:800; line-height:1.28;
+  font-size:clamp(1.15rem,1rem + .6vw,1.45rem);
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:2;
+  overflow-wrap:normal; word-break:normal; hyphens:auto;
+}
+.news-card .news-title a, main .grid > article h3 a{ color:inherit; text-decoration:none; }
+.news-card .news-title a:hover, main .grid > article h3 a:hover{
+  text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px;
+}
+
+/* snippet */
+.news-card .snippet, main .grid > article p{
+  font-size:1rem; line-height:1.5;
+  display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; -webkit-line-clamp:4;
+  overflow-wrap:normal; word-break:normal; hyphens:auto;
+}
+
+/* fonte */
+.news-card .source, main .grid > article .source, main .grid > article .text-sm{ font-size:.9rem; color:#666; }
+.news-card .source::before{ content:"●"; font-size:.65rem; color:var(--brand); }
+
+/* badge categoria */
+.kicker, main .grid > article .uppercase{
+  background:#fff1f1; border:1px solid #ffd6d6; color:#111;
+  padding:.3rem .6rem; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+}
+
+/* link accent */
+a{ color:var(--brand); }
+/* fine patch */
+
